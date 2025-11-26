@@ -11,6 +11,7 @@ import { CardsModule } from './cards/cards.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { CommitmentsModule } from './commitments/commitments.module';
 import { ReportsModule } from './reports/reports.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -23,11 +24,13 @@ import { ReportsModule } from './reports/reports.module';
     InvoicesModule,
     CommitmentsModule,
     ReportsModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
 
 
 

@@ -1,9 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as morgan from 'morgan';
 import { AppModule } from './app.module';
+import { initSentry } from './config/sentry.config';
+import { logger } from './config/logger.config';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { SentryFilter } from './common/filters/sentry.filter';
 
 async function bootstrap() {
+  // Initialize Sentry
+  initSentry();
+
   const app = await NestFactory.create(AppModule);
 
   // Enable validation globally
@@ -12,6 +20,21 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+    }),
+  );
+
+  // Global logging interceptor
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // Global exception filter (Sentry)
+  app.useGlobalFilters(new SentryFilter());
+
+  // HTTP request logging with Morgan
+  app.use(
+    require('morgan')('combined', {
+      stream: {
+        write: (message: string) => logger.info(message.trim()),
+      },
     }),
   );
 
