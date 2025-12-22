@@ -19,7 +19,7 @@ export class User {
   name: string;
 
   @Column({ type: 'varchar', length: 255, select: false })
-  password: string; // Hashed with bcrypt
+  password: string;
 
   @Column({ type: 'boolean', default: true })
   active: boolean;
@@ -30,7 +30,6 @@ export class User {
   @UpdateDateColumn()
   updated_at: Date;
 
-  // Relationships
   @OneToMany('Account', 'user')
   accounts: any[];
 

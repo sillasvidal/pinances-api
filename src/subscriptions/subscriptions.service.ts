@@ -10,6 +10,7 @@ import { SubscriptionLog } from '../entities/subscription-log.entity';
 import { Plan } from '../entities/plan.entity';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { User } from '../entities/user.entity';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -20,6 +21,7 @@ export class SubscriptionsService {
     private readonly logRepository: Repository<SubscriptionLog>,
     @InjectRepository(Plan)
     private readonly planRepository: Repository<Plan>,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(createSubscriptionDto: CreateSubscriptionDto, user: User): Promise<Subscription> {
@@ -46,24 +48,30 @@ export class SubscriptionsService {
       throw new BadRequestException('User already has an active subscription');
     }
 
-    const startDate = new Date();
-    const currentPeriodStart = new Date(startDate);
-    const currentPeriodEnd = new Date(startDate);
-    
-    if (plan.interval === 'monthly') {
-      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-    } else if (plan.interval === 'yearly') {
-      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
-    }
+    // 1. Get or Create Customer in Gateway
+    const gatewayCustomer = await this.paymentsService.getOrCreateCustomer(user);
 
+    // 2. Create Subscription in Gateway
+    const gatewaySubscription = await this.paymentsService.createGatewaySubscription({
+      customerId: gatewayCustomer.gateway_customer_id,
+      planId: plan.gateway_plan_id, // Ensure this exists on Plan entity
+      paymentMethodId: payment_method_id,
+      metadata: {
+        userId: user.id,
+        planId: plan.id,
+      },
+    });
+
+    // 3. Create Local Subscription
     const subscription = this.subscriptionRepository.create({
       user,
       plan,
-      status: SubscriptionStatus.ACTIVE, // Assuming immediate activation for now
-      start_date: startDate,
-      current_period_start: currentPeriodStart,
-      current_period_end: currentPeriodEnd,
+      status: gatewaySubscription.status as any, // Map if necessary
+      start_date: new Date(),
+      current_period_start: gatewaySubscription.currentPeriodStart,
+      current_period_end: gatewaySubscription.currentPeriodEnd,
       payment_method_id,
+      gateway_subscription_id: gatewaySubscription.id,
     });
 
     const savedSubscription = await this.subscriptionRepository.save(subscription);
@@ -102,6 +110,11 @@ export class SubscriptionsService {
     }
 
     const oldStatus = subscription.status;
+    
+    if (subscription.gateway_subscription_id) {
+        await this.paymentsService.cancelGatewaySubscription(subscription.gateway_subscription_id);
+    }
+
     subscription.status = SubscriptionStatus.CANCELED;
     subscription.cancel_at_period_end = true; // Typically you cancel at end of period
 

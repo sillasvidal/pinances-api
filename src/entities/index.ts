@@ -9,6 +9,8 @@ export { Subscription } from './subscription.entity';
 export { SubscriptionLog } from './subscription-log.entity';
 export { BillingInvoice } from './billing-invoice.entity';
 export { Payment } from './payment.entity';
+export { GatewayCustomer } from './gateway-customer.entity';
+
 
 
 
