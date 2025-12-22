@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as morgan from 'morgan';
 import { AppModule } from './app.module';
@@ -9,18 +9,14 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { SentryFilter } from './common/filters/sentry.filter';
 
 async function bootstrap() {
-  // Initialize Sentry
   initSentry();
 
   const app = await NestFactory.create(AppModule);
-
-  // Enable CORS for frontend
   app.enableCors({
     origin: ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
   });
 
-  // Enable validation globally
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -29,13 +25,9 @@ async function bootstrap() {
     }),
   );
 
-  // Global logging interceptor
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Global exception filter (Sentry)
   app.useGlobalFilters(new SentryFilter());
-
-  // HTTP request logging with Morgan
   app.use(
     require('morgan')('combined', {
       stream: {
@@ -44,7 +36,6 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Pinances API')
     .setDescription(
@@ -63,9 +54,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('documentation', app, document);
 
-  await app.listen(process.env.PORT ?? 3123);
-  console.log(`🚀 Application is running on: http://localhost:${process.env.PORT ?? 3123}`);
-  console.log(`📚 Swagger documentation: http://localhost:${process.env.PORT ?? 3123}/documentation`);
+  const port = process.env.PORT ?? 3123;
+  await app.listen(port);
+  const loggerService = new Logger('Bootstrap');
+  loggerService.log(`🚀 Application is running on: http://localhost:${port}`);
+  loggerService.log(`📚 Swagger documentation: http://localhost:${port}/documentation`);
 }
 bootstrap();
 

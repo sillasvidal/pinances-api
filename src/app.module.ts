@@ -12,6 +12,14 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { CommitmentsModule } from './commitments/commitments.module';
 import { ReportsModule } from './reports/reports.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { BillingModule } from './billing/billing.module';
+import { PaymentsModule } from './payments/payments.module';
+
+
+
+
 
 @Module({
   imports: [
@@ -25,6 +33,10 @@ import { MetricsModule } from './metrics/metrics.module';
     CommitmentsModule,
     ReportsModule,
     MetricsModule,
+    PlansModule,
+    SubscriptionsModule,
+    BillingModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
