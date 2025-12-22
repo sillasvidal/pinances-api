@@ -71,6 +71,19 @@ export class StripeGateway implements PaymentGateway {
     }
   }
 
+  async constructEventFromPayload(signature: string, payload: Buffer): Promise<any> {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new InternalServerErrorException('Stripe webhook secret is not defined');
+    }
+
+    try {
+      return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (error) {
+      throw new Error(`Webhook signature verification failed: ${error.message}`);
+    }
+  }
+
   private mapStripeSubscription(subscription: Stripe.Subscription): PaymentGatewaySubscription {
     return {
       id: subscription.id,

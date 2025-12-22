@@ -29,6 +29,7 @@ export interface PaymentGateway {
   createCustomer(input: CreateCustomerInput): Promise<PaymentGatewayCustomer>;
   createSubscription(input: CreateSubscriptionInput): Promise<PaymentGatewaySubscription>;
   cancelSubscription(subscriptionId: string): Promise<PaymentGatewaySubscription>;
+  constructEventFromPayload(signature: string, payload: Buffer): Promise<any>;
 }
 
 export const PAYMENT_GATEWAY = 'PAYMENT_GATEWAY';

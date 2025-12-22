@@ -12,12 +12,13 @@ import { StripeGateway } from './gateways/stripe.gateway';
   controllers: [],
   providers: [
     PaymentsService,
+    StripeGateway,
     {
       provide: 'PAYMENT_GATEWAY',
-      useClass: StripeGateway,
+      useExisting: StripeGateway,
     },
   ],
 
-  exports: [PaymentsService],
+  exports: [PaymentsService, 'PAYMENT_GATEWAY', StripeGateway],
 })
 export class PaymentsModule {}
