@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -18,12 +19,9 @@ import { BillingModule } from './billing/billing.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
-
-
-
-
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(typeOrmConfig),
     AuthModule,
     UsersModule,
@@ -40,6 +38,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PaymentsModule,
     WebhooksModule,
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })

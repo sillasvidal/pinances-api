@@ -13,7 +13,11 @@ export class StripeGateway implements PaymentGateway {
   private stripe: Stripe;
 
   constructor() {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+      throw new InternalServerErrorException('STRIPE_SECRET_KEY is not defined in environment variables');
+    }
+    this.stripe = new Stripe(apiKey, {
       apiVersion: '2024-11-20.acacia' as any,
       typescript: true,
     });
