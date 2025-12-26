@@ -39,7 +39,10 @@ export class UsersService {
   }
 
   async findById(id: string): Promise<User | null> {
-    return await this.userRepository.findOne({ where: { id } });
+    return await this.userRepository.findOne({
+      where: { id, active: true },
+      select: ['id', 'email', 'name', 'active', 'created_at', 'updated_at'],
+    });
   }
 
   async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
