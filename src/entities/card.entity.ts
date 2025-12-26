@@ -23,7 +23,14 @@ export class Card {
   @Column({ type: 'varchar', length: 4 })
   last_digits: string;
 
-  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  @Column({
+    type: 'bigint',
+    nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseInt(value, 10) : null),
+    },
+  })
   total_limit: number;
 
   @Column({ type: 'integer' })

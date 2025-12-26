@@ -22,17 +22,29 @@ export class Commitment {
   @Column({ type: 'enum', enum: ['expense', 'income'] })
   type: 'expense' | 'income';
 
-  @Column({ type: 'decimal', precision: 15, scale: 2 })
-  total_amount: number; // Impacts accrual regime
+  @Column({
+    type: 'bigint',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseInt(value, 10),
+    },
+  })
+  total_amount: number;
 
   @Column({ type: 'integer' })
   installments_count: number;
 
-  @Column({ type: 'decimal', precision: 15, scale: 2 })
-  installment_amount: number; // Impacts cash regime
+  @Column({
+    type: 'bigint',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseInt(value, 10),
+    },
+  })
+  installment_amount: number;
 
   @Column({ type: 'date' })
-  accrual_date: Date; // When the obligation was assumed (impacts DRE)
+  accrual_date: Date;
 
   @Column({ type: 'date' })
   first_installment_date: Date;

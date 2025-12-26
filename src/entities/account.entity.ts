@@ -20,15 +20,24 @@ export class Account {
   @Column({ type: 'enum', enum: ['checking', 'investment'] })
   type: 'checking' | 'investment';
 
-  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    type: 'bigint',
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseInt(value, 10),
+    },
+  })
   current_balance: number;
 
   @Column({
-    type: 'decimal',
-    precision: 15,
-    scale: 2,
+    type: 'bigint',
     default: 0,
     nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseInt(value, 10) : null),
+    },
   })
   commitment_reserve: number; // Only for investment accounts
 

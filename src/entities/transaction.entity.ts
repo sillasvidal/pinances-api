@@ -22,11 +22,17 @@ export class Transaction {
   @Column({ type: 'enum', enum: ['expense', 'income', 'transfer'] })
   type: 'expense' | 'income' | 'transfer';
 
-  @Column({ type: 'decimal', precision: 15, scale: 2 })
+  @Column({
+    type: 'bigint',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseInt(value, 10),
+    },
+  })
   amount: number;
 
   @Column({ type: 'date' })
-  transaction_date: Date; // Impacts cash flow
+  transaction_date: Date;
 
   @ManyToOne(() => Account, (account) => account.transactions, {
     nullable: true,
@@ -56,7 +62,7 @@ export class Transaction {
   commitment_id: string;
 
   @Column({ type: 'integer', nullable: true })
-  installment_number: number; // e.g., 1, 2, 3... (if it's an installment)
+  installment_number: number;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   category: string;

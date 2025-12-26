@@ -10,7 +10,7 @@ export class AccountsService {
   constructor(
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
-  ) {}
+  ) { }
 
   async create(createAccountDto: CreateAccountDto, userId: string): Promise<Account> {
     const account = this.accountRepository.create({
@@ -68,5 +68,40 @@ export class AccountsService {
       commitment_reserve: Number(account.commitment_reserve || 0),
       available_balance: available,
     };
+  }
+
+  async updateBalance(
+    id: string,
+    amountDelta: number,
+    userId: string,
+  ): Promise<void> {
+    const account = await this.findOne(id, userId);
+
+    // We can use query builder for atomic update to avoid race conditions
+    await this.accountRepository
+      .createQueryBuilder()
+      .update(Account)
+      .set({
+        current_balance: () => `current_balance + ${amountDelta}`,
+      })
+      .where('id = :id', { id })
+      .execute();
+  }
+
+  async recalculateBalance(id: string, userId: string): Promise<void> {
+    const account = await this.findOne(id, userId);
+
+    // This would require injecting TransactionsService or Repository to sum all transactions
+    // For now, we will leave this as a placeholder or implement if circular dependency allows
+    // Ideally, this arithmetic happens in SQL:
+    /*
+      UPDATE accounts a
+      SET current_balance = (
+        SELECT COALESCE(SUM(amount), 0)
+        FROM transactions t
+        WHERE t.account_id = a.id
+      )
+      WHERE a.id = :id
+    */
   }
 }

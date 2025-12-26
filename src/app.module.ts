@@ -18,6 +18,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { BillingModule } from './billing/billing.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { BalanceHistoryModule } from './balance-history/balance-history.module';
 
 @Module({
   imports: [
@@ -37,12 +38,13 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     BillingModule,
     PaymentsModule,
     WebhooksModule,
+    BalanceHistoryModule,
   ],
 
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
 
 
 

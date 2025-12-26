@@ -5,6 +5,8 @@ import { Transaction } from '../entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { InvoicesService } from '../invoices/invoices.service';
+import { AccountsService } from '../accounts/accounts.service';
+import { BalanceHistoryService } from '../balance-history/balance-history.service';
 
 @Injectable()
 export class TransactionsService {
@@ -12,35 +14,58 @@ export class TransactionsService {
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
     private readonly invoicesService: InvoicesService,
-  ) {}
+    private readonly accountsService: AccountsService,
+    private readonly balanceHistoryService: BalanceHistoryService,
+  ) { }
 
   async create(
     createTransactionDto: CreateTransactionDto,
     userId: string,
   ): Promise<Transaction> {
-    // If transaction has invoice_id, auto-create invoice if needed
     if (createTransactionDto.invoice_id) {
-      // Invoice already specified, just use it
+
       const transaction = this.transactionRepository.create({
         ...createTransactionDto,
         user_id: userId,
       });
       const savedTransaction = await this.transactionRepository.save(transaction);
-      
-      // Update invoice total
+
+
       await this.invoicesService.updateInvoiceTotal(createTransactionDto.invoice_id);
-      
+
       return savedTransaction;
     }
-    
-    // Check if this is a card transaction (has invoice but not specified)
-    // For now, we'll just create the transaction
-    // In the future, you could add logic to detect card transactions
+
+
+
     const transaction = this.transactionRepository.create({
       ...createTransactionDto,
       user_id: userId,
     });
-    return await this.transactionRepository.save(transaction);
+    const savedTransaction = await this.transactionRepository.save(transaction);
+
+
+    if (savedTransaction.account_id) {
+      const amount = Number(savedTransaction.amount);
+      const isIncome = savedTransaction.type === 'income';
+
+      const delta = isIncome ? amount : -amount;
+
+      await this.accountsService.updateBalance(
+        savedTransaction.account_id,
+        delta,
+        userId
+      );
+
+
+      await this.balanceHistoryService.recalculateSubsequentSnapshots(
+        savedTransaction.account_id,
+        new Date(savedTransaction.transaction_date),
+        delta
+      );
+    }
+
+    return savedTransaction;
   }
 
   async findAll(
@@ -94,13 +119,61 @@ export class TransactionsService {
     updateTransactionDto: UpdateTransactionDto,
     userId: string,
   ): Promise<Transaction> {
-    const transaction = await this.findOne(id, userId);
-    Object.assign(transaction, updateTransactionDto);
-    return await this.transactionRepository.save(transaction);
+    const oldTransaction = await this.findOne(id, userId);
+
+
+    if (oldTransaction.account_id) {
+      const oldAmount = Number(oldTransaction.amount);
+      const oldIsIncome = oldTransaction.type === 'income';
+      const oldDelta = oldIsIncome ? oldAmount : -oldAmount;
+
+      await this.accountsService.updateBalance(oldTransaction.account_id, -oldDelta, userId);
+
+      await this.balanceHistoryService.recalculateSubsequentSnapshots(
+        oldTransaction.account_id,
+        new Date(oldTransaction.transaction_date),
+        -oldDelta
+      );
+    }
+
+    Object.assign(oldTransaction, updateTransactionDto);
+    const newTransaction = await this.transactionRepository.save(oldTransaction);
+
+    // Apply new effect
+    if (newTransaction.account_id) {
+      const newAmount = Number(newTransaction.amount);
+      const newIsIncome = newTransaction.type === 'income';
+      const newDelta = newIsIncome ? newAmount : -newAmount;
+      await this.accountsService.updateBalance(newTransaction.account_id, newDelta, userId);
+
+      await this.balanceHistoryService.recalculateSubsequentSnapshots(
+        newTransaction.account_id,
+        new Date(newTransaction.transaction_date),
+        newDelta
+      );
+    }
+
+    return newTransaction;
   }
 
   async remove(id: string, userId: string): Promise<void> {
     const transaction = await this.findOne(id, userId);
+
+    // Revert balance effect before deleting
+    if (transaction.account_id) {
+      const amount = Number(transaction.amount);
+      const isIncome = transaction.type === 'income';
+      const delta = isIncome ? amount : -amount;
+      // To revert, we do the opposite: subtract delta (or add -delta)
+      await this.accountsService.updateBalance(transaction.account_id, -delta, userId);
+
+      await this.balanceHistoryService.recalculateSubsequentSnapshots(
+        transaction.account_id,
+        new Date(transaction.transaction_date),
+        -delta
+      );
+    }
+
     await this.transactionRepository.remove(transaction);
   }
 
