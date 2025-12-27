@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { CategoriesService } from '../categories/categories.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -9,6 +10,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -17,6 +19,8 @@ export class AuthService {
       registerDto.name,
       registerDto.password,
     );
+
+    await this.categoriesService.createDefaultCategories(user.id);
 
     const payload = { sub: user.id, email: user.email };
     const access_token = this.jwtService.sign(payload);

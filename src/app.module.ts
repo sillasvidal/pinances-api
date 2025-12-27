@@ -19,6 +19,7 @@ import { BillingModule } from './billing/billing.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { BalanceHistoryModule } from './balance-history/balance-history.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { BalanceHistoryModule } from './balance-history/balance-history.module';
     PaymentsModule,
     WebhooksModule,
     BalanceHistoryModule,
+    CategoriesModule,
   ],
 
   controllers: [AppController],
