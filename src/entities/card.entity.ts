@@ -8,6 +8,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { Account } from './account.entity';
 
 @Entity('cards')
 export class Card {
@@ -60,4 +61,11 @@ export class Card {
 
   @OneToMany('Commitment', 'card')
   commitments: any[];
+
+  @ManyToOne(() => Account, { nullable: true })
+  @JoinColumn({ name: 'account_id' })
+  account: Account;
+
+  @Column({ type: 'uuid', nullable: true })
+  account_id: string;
 }

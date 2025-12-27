@@ -45,4 +45,9 @@ export class CreateCardDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid', description: 'Linked bank account ID' })
+  @IsString()
+  @IsOptional()
+  account_id?: string;
 }
