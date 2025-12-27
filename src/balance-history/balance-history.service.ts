@@ -41,9 +41,8 @@ export class BalanceHistoryService {
         const today = new Date();
         const startDate = new Date(today);
         startDate.setMonth(today.getMonth() - months);
-        startDate.setDate(1); // Start from beginning of that month
+        startDate.setDate(1);
 
-        // Get all snapshots in range
         const snapshots = await this.balanceHistoryRepository.find({
             where: {
                 user_id: userId,
@@ -53,31 +52,26 @@ export class BalanceHistoryService {
             relations: ['account'],
         });
 
-        // Bucket by Year-Month
         const monthlyBalances = new Map<string, number>();
 
         snapshots.forEach((snapshot) => {
-            const monthKey = snapshot.date.toISOString().slice(0, 7); // YYYY-MM
+            const monthKey = snapshot.date.toISOString().slice(0, 7);
             const currentTotal = monthlyBalances.get(monthKey) || 0;
             monthlyBalances.set(monthKey, currentTotal + Number(snapshot.balance));
         });
 
-        // Format for frontend: [{ month: 'Jan', value: 15000 }, ...]
         const result = Array.from(monthlyBalances.entries()).map(([key, value]) => {
             const [year, month] = key.split('-');
             const date = new Date(parseInt(year), parseInt(month) - 1, 1);
             const monthName = date.toLocaleString('pt-BR', { month: 'short' });
-            // Capitalize first letter
             const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
             return {
                 month: monthLabel,
-                value: value, // Value in cents
+                value: value,
                 originalDate: key,
             };
         });
-
-        // Ensure strict order
         return result.sort((a, b) => a.originalDate.localeCompare(b.originalDate));
     }
 
@@ -86,9 +80,6 @@ export class BalanceHistoryService {
         transactionDate: Date,
         amountDelta: number,
     ) {
-        // Determine the first snapshot date that is >= transactionDate
-        // All snapshots after this date need to be adjusted by amountDelta
-
         await this.balanceHistoryRepository
             .createQueryBuilder()
             .update(BalanceHistory)

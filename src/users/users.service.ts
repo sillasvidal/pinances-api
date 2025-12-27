@@ -41,11 +41,47 @@ export class UsersService {
   async findById(id: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { id, active: true },
-      select: ['id', 'email', 'name', 'active', 'created_at', 'updated_at'],
+      select: ['id', 'email', 'name', 'active', 'tutorial_completed', 'tutorial_step', 'created_at', 'updated_at'],
     });
   }
 
   async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
+  }
+
+  async updateTutorialStep(userId: string, step: number): Promise<User> {
+    await this.userRepository.update(userId, { tutorial_step: step });
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async completeTutorial(userId: string): Promise<User> {
+    await this.userRepository.update(userId, {
+      tutorial_completed: true,
+      tutorial_step: 6,
+    });
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async skipTutorial(userId: string): Promise<User> {
+    await this.userRepository.update(userId, {
+      tutorial_step: -1,
+    });
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async restartTutorial(userId: string): Promise<User> {
+    await this.userRepository.update(userId, {
+      tutorial_completed: false,
+      tutorial_step: 0,
+    });
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 }

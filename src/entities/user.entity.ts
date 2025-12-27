@@ -24,6 +24,12 @@ export class User {
   @Column({ type: 'boolean', default: true })
   active: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  tutorial_completed: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  tutorial_step: number;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -77,7 +77,6 @@ export class AccountsService {
   ): Promise<void> {
     const account = await this.findOne(id, userId);
 
-    // We can use query builder for atomic update to avoid race conditions
     await this.accountRepository
       .createQueryBuilder()
       .update(Account)
