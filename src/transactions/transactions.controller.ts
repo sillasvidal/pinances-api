@@ -11,7 +11,10 @@ import {
   HttpStatus,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -93,6 +96,24 @@ export class TransactionsController {
         status: invoice.status,
       },
     };
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Import transactions from CSV file' })
+  @ApiResponse({ status: 200, description: 'Transactions imported successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid CSV format' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async importTransactions(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+
+    return this.transactionsService.importFromCSV(file.buffer.toString(), req.user.id);
   }
 
   @Get()

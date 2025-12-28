@@ -7,6 +7,8 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { InvoicesService } from '../invoices/invoices.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { BalanceHistoryService } from '../balance-history/balance-history.service';
+import { parse } from 'csv-parse/sync';
+import { ImportResultDto } from './dto/import-transactions.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -222,5 +224,132 @@ export class TransactionsService {
       balance: income - expenses,
       by_category,
     };
+  }
+
+
+  async importFromCSV(csvContent: string, userId: string): Promise<ImportResultDto> {
+    const result: ImportResultDto = {
+      success: 0,
+      failed: 0,
+      errors: [],
+      transactions: [],
+    };
+
+    try {
+      // Parse CSV with semicolon delimiter
+      const records = parse(csvContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        delimiter: ';',
+      });
+
+      // Process each row
+      for (let i = 0; i < records.length; i++) {
+        const row: any = records[i];
+        const rowNumber = i + 2; // +2 because of header and 0-index
+
+        try {
+          // Validate required fields (Date, Description, Value)
+          if (!row.Date || !row.Description || !row.Value) {
+            result.errors.push({
+              row: rowNumber,
+              error: 'Missing required fields (Date, Description, Value)',
+            });
+            result.failed++;
+            continue;
+          }
+
+          // Parse amount (Value column)
+          const amount = parseFloat(row.Value.replace(',', '.'));
+          if (isNaN(amount) || amount === 0) {
+            result.errors.push({
+              row: rowNumber,
+              error: `Invalid amount: ${row.Value}`,
+            });
+            result.failed++;
+            continue;
+          }
+
+          // Determine type based on amount (negative = expense, positive = income)
+          const type: 'expense' | 'income' = amount < 0 ? 'expense' : 'income';
+          const absoluteAmount = Math.abs(amount);
+
+          // Convert amount to cents
+          const amountInCents = Math.round(absoluteAmount * 100);
+
+          // Parse date (support both YYYY-MM-DD and DD/MM/YYYY)
+          let transactionDate: Date;
+          if (row.Date.includes('/')) {
+            const [day, month, year] = row.Date.split('/');
+            transactionDate = new Date(`${year}-${month}-${day}`);
+          } else {
+            transactionDate = new Date(row.Date);
+          }
+
+          if (isNaN(transactionDate.getTime())) {
+            result.errors.push({
+              row: rowNumber,
+              error: `Invalid date format: ${row.Date}`,
+            });
+            result.failed++;
+            continue;
+          }
+
+          // Find or create account if Account name provided
+          let accountId: string | undefined;
+          if (row.Account && row.Account.trim()) {
+            try {
+              const accounts = await this.accountsService.findAll(userId);
+              let account = accounts.find(a => a.name === row.Account.trim());
+              
+              // Create account if it doesn't exist
+              if (!account) {
+                account = await this.accountsService.create({
+                  name: row.Account.trim(),
+                  type: 'checking',
+                }, userId);
+              }
+              
+              accountId = account?.id;
+            } catch (error) {
+              // If account creation fails, continue without account
+              result.errors.push({
+                row: rowNumber,
+                error: `Failed to create/find account: ${error.message}`,
+              });
+            }
+          }
+
+          // Use Category field
+          const category = row.Category && row.Category.trim() ? row.Category.trim() : undefined;
+
+          // Create transaction
+          const transactionDto: CreateTransactionDto = {
+            description: row.Description.trim(),
+            type: type,
+            amount: amountInCents,
+            transaction_date: transactionDate.toISOString().split('T')[0],
+            category: category,
+            notes: row.Tags || undefined,
+            account_id: accountId,
+          };
+
+          const transaction = await this.create(transactionDto, userId);
+          result.transactions.push(transaction);
+          result.success++;
+        } catch (error) {
+          result.errors.push({
+            row: rowNumber,
+            error: error.message || 'Unknown error',
+          });
+          result.failed++;
+        }
+      }
+
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to parse CSV: ${error.message}`);
+    }
   }
 }
