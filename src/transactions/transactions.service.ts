@@ -161,12 +161,10 @@ export class TransactionsService {
   async remove(id: string, userId: string): Promise<void> {
     const transaction = await this.findOne(id, userId);
 
-    // Revert balance effect before deleting
     if (transaction.account_id) {
       const amount = Number(transaction.amount);
       const isIncome = transaction.type === 'income';
       const delta = isIncome ? amount : -amount;
-      // To revert, we do the opposite: subtract delta (or add -delta)
       await this.accountsService.updateBalance(transaction.account_id, -delta, userId);
 
       await this.balanceHistoryService.recalculateSubsequentSnapshots(
@@ -176,7 +174,7 @@ export class TransactionsService {
       );
     }
 
-    await this.transactionRepository.remove(transaction);
+    await this.transactionRepository.softRemove(transaction);
   }
 
   async getStatistics(
