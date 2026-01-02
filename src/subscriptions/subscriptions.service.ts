@@ -176,4 +176,47 @@ export class SubscriptionsService {
       },
     });
   }
+
+  async handleCheckoutSessionCompleted(session: any) {
+    const { userId, planId, interval } = session.metadata;
+
+    if (!userId || !planId) {
+        console.error('Missing metadata in checkout session');
+        return;
+    }
+
+    const { subscription: gatewaySubscriptionId, customer: gatewayCustomerId } = session;
+
+    console.log(`Processing checkout session for user ${userId} and plan ${planId}`);
+
+    const plan = await this.planRepository.findOne({ where: { id: planId } });
+    if (!plan) {
+        console.error(`Plan ${planId} not found`);
+        return;
+    }
+
+    const existingSubscription = await this.subscriptionRepository.findOne({
+        where: { user_id: userId, status: SubscriptionStatus.ACTIVE }
+    });
+
+    if (existingSubscription) {
+        await this.cancel(existingSubscription.id, userId);
+    }
+
+    const newSubscription = this.subscriptionRepository.create({
+        user_id: userId,
+        plan: plan,
+        status: SubscriptionStatus.ACTIVE,
+        start_date: new Date(),
+        current_period_start: new Date(),
+        current_period_end: interval === 'yearly' ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)) : new Date(new Date().setMonth(new Date().getMonth() + 1)),
+        gateway_subscription_id: typeof gatewaySubscriptionId === 'string' ? gatewaySubscriptionId : gatewaySubscriptionId?.id,
+        payment_method_id: 'stripe_checkout',
+    });
+
+    const savedSubscription = await this.subscriptionRepository.save(newSubscription);
+    await this.logAction(savedSubscription, 'created_via_webhook', null, 'active', { sessionId: session.id });
+    
+    console.log(`Subscription ${savedSubscription.id} created via webhook`);
+  }
 }

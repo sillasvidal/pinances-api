@@ -90,7 +90,7 @@ export class PaymentsService {
   }
 
   private async handleInvoicePaymentSucceeded(invoice: any) {
-    const subscriptionId = invoice.subscription;
+    const subscriptionId = invoice.parent.subscription_details.subscription;
     const paymentIntentId = invoice.payment_intent;
     const amount = invoice.amount_paid;
     const currency = invoice.currency;

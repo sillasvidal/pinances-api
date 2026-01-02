@@ -9,6 +9,7 @@ import {
 import type { Request } from 'express';
 import { StripeGateway } from '../../payments/gateways/stripe.gateway';
 import { PaymentsService } from '../../payments/payments.service';
+import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 
 @Controller('webhooks/stripe')
 export class StripeWebhooksController {
@@ -17,6 +18,7 @@ export class StripeWebhooksController {
   constructor(
     private readonly paymentGateway: StripeGateway,
     private readonly paymentsService: PaymentsService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   @Post()
@@ -39,7 +41,12 @@ export class StripeWebhooksController {
 
     this.logger.log(`Received event: ${event.type}`);
 
-    await this.paymentsService.handleWebhookEvent(event);
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        await this.subscriptionsService.handleCheckoutSessionCompleted(session);
+    } else {
+        await this.paymentsService.handleWebhookEvent(event);
+    }
 
     return { received: true };
   }
