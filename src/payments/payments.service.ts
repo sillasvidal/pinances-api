@@ -60,6 +60,16 @@ export class PaymentsService {
     return this.paymentGateway.cancelSubscription(subscriptionId);
   }
 
+  async createCheckoutSession(input: {
+    customerId: string;
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    metadata?: Record<string, string>;
+  }): Promise<{ url: string; sessionId: string }> {
+    return this.paymentGateway.createCheckoutSession(input);
+  }
+
   async processPayment(amount: number, currency: string, paymentMethodId: string): Promise<any> {
     // TODO: Integrate with actual Payment Gateway for one-off payments
     return {

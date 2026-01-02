@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -128,17 +129,51 @@ export class SubscriptionsService {
   private async logAction(
     subscription: Subscription,
     action: string,
-    previousStatus: string | null | undefined, // Allow undefined too
+    previousStatus: string | null | undefined,
     newStatus: string,
     details?: any,
   ) {
     const log = this.logRepository.create({
       subscription,
       action,
-      previous_status: previousStatus ?? null, // Ensure null if undefined
+      previous_status: previousStatus ?? null,
       new_status: newStatus,
       details,
-    } as any); // Cast to any to bypass strict type check on create for now if needed, or better, fix entity type
+    } as any);
     await this.logRepository.save(log);
+  }
+
+  async createCheckoutSession(user: User, planId: string, interval: 'monthly' | 'yearly') {
+    const gatewayCustomer = await this.paymentsService.getOrCreateCustomer(user);
+
+    const plan = await this.planRepository.findOne({ where: { id: planId } });
+    if (!plan) {
+        throw new NotFoundException('Plan not found');
+    }
+
+    let priceId = '';
+    if (interval === 'monthly') {
+        priceId = process.env.STRIPE_PRICE_MONTHLY!;
+    } else {
+        priceId = process.env.STRIPE_PRICE_YEARLY!;
+    }
+
+    if (!priceId) {
+        throw new InternalServerErrorException('Price ID not configured for this interval');
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    return this.paymentsService.createCheckoutSession({
+      customerId: gatewayCustomer.gateway_customer_id,
+      priceId: priceId,
+      successUrl: `${frontendUrl}/plans/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${frontendUrl}/plans`,
+      metadata: {
+        userId: user.id,
+        planId: plan.id,
+        interval,
+      },
+    });
   }
 }

@@ -61,6 +61,40 @@ export class StripeGateway implements PaymentGateway {
     }
   }
 
+  async createCheckoutSession(input: {
+    customerId: string;
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    metadata?: Record<string, string>;
+  }): Promise<{ url: string; sessionId: string }> {
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        customer: input.customerId,
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: input.priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: input.successUrl,
+        cancel_url: input.cancelUrl,
+        metadata: input.metadata,
+      });
+
+      return {
+        url: session.url || '',
+        sessionId: session.id,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to create checkout session in Stripe: ${error.message}`,
+      );
+    }
+  }
+
   async cancelSubscription(subscriptionId: string): Promise<PaymentGatewaySubscription> {
     try {
       const subscription = await this.stripe.subscriptions.update(subscriptionId, {

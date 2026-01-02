@@ -28,6 +28,16 @@ export class SubscriptionsController {
     return this.subscriptionsService.create(createSubscriptionDto, req.user);
   }
 
+  @Post('checkout')
+  @ApiOperation({ summary: 'Create a checkout session' })
+  @ApiResponse({ status: 201, description: 'Checkout session created' })
+  async createCheckoutSession(
+    @Body() body: { planId: string; interval: 'monthly' | 'yearly' },
+    @Request() req,
+  ) {
+    return this.subscriptionsService.createCheckoutSession(req.user, body.planId, body.interval);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all user subscriptions' })
   @ApiResponse({ status: 200, description: 'List of subscriptions' })
